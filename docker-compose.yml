@@ -1,0 +1,19 @@
+services:
+  db:
+      image: postgres:latest # You can change the PostgreSQL version if needed
+      container_name: django_db
+      environment:
+        POSTGRES_DB: ${DB_NAME}  # Use environment variable from .env
+        POSTGRES_USER: ${DB_USER}  # Use environment variable from .env
+        POSTGRES_PASSWORD: ${DB_PASSWORD}  # Use environment variable from .env
+      ports:
+        - "${DB_PORT}:5432"  # Adjust the port as needed
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      env_file:
+        - .env
+
+volumes:
+  postgres_data:
+
+
