@@ -19,3 +19,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('pk', 'email',)
 
 
+class AgeRangeSerializer(serializers.Serializer):
+    min_age = serializers.IntegerField(min_value=18)
+    max_age = serializers.IntegerField(max_value=100, min_value=18)
+
