@@ -9,10 +9,18 @@ GENDER_SELECTION = [
 
 
 class CustomUser(AbstractUser):
-    # We don't need to define the email attribute because is inherited from AbstractUser
     gender = models.CharField(max_length=20, choices=GENDER_SELECTION)
     phone_number = models.CharField(max_length=30)
     age = models.PositiveIntegerField(null=True)
+
+
+class MatchingCriteria(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='matching_criteria')
+    min_age = models.PositiveIntegerField(null=True)
+    max_age = models.PositiveIntegerField(null=True)
+
+    def __str__(self):
+        return f"Matching Criteria for {self.user.username}"
 
 
 class Match(models.Model):
@@ -30,9 +38,25 @@ class Match(models.Model):
 
 
 class DeclinedMatch(models.Model):
-    requesting_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='requested_declines')
-    declined_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_declines')
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='requested_declines')
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_declines')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.requesting_user} declined a request from {self.declined_user}"
+        return f"{self.sender} declined a request from {self.receiver}"
+
+
+class MatchRequest(models.Model):
+    REQUEST_STATE_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Accepted', 'Accepted'),
+        ('Declined', 'Declined'),
+    ]
+
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_requests')
+    sender = models.ManyToManyField(CustomUser, related_name='sent_requests')
+    state = models.CharField(max_length=10, choices=REQUEST_STATE_CHOICES, default='Pending')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.receiver.username}'s match request ({self.state})"

@@ -2,7 +2,7 @@ import random
 from django.db.models import Q
 from enum import Enum
 
-from ..models import CustomUser, Match, DeclinedMatch
+from ..models import CustomUser, Match, DeclinedMatch, MatchingCriteria
 
 MATCH_STATE_CHOICES = [
     ('Match', 'Match'),
@@ -33,27 +33,39 @@ def request_a_match(actual_user: CustomUser, targeted_user: CustomUser) -> str:
         return "Request Declined, Select a different User"
 
 
-def update_match_state(user1, user2):
-    match = Match.objects.get(Q(user1=user1))
-    match.user2 = user2
+def update_match_state(sender, receiver):
+    match = Match.objects.get(Q(user1=sender))
+    match.user2 = receiver
     match.state = Match.MATCH_STATE_CHOICES[0][0]
     match.save()
 
 
-def send_request_to_targeted_user() -> MATCH_STATE_CHOICES:
-    return random.choice(list(InvitationStatus))
+def add_to_declined_matches(sender, receiver):
+    declined_match = DeclinedMatch(sender=sender, receiver=receiver)
+    declined_match.save()
+
+
+def update_individual_state(sender, receiver):
+    update_match_state(sender, receiver)
+    update_match_state(receiver, sender)
+
+
+def create_or_update_matching_criteria(requested_user, min_age, max_age):
+    matching_criteria, created = MatchingCriteria.objects.get_or_create(user=requested_user)
+    matching_criteria.min_age = min_age
+    matching_criteria.max_age = max_age
 
 
 def matching_algorithm(min_age, max_age, actual_user):
     # Get the IDs of users who have declined match requests from actual_user
     users_declined_by_requested_user_ids = DeclinedMatch.objects.filter(
-        requesting_user=actual_user
-    ).values_list('declined_user_id', flat=True)
+        sender=actual_user
+    ).values_list('sender_id', flat=True)
 
     # Get the IDs of users who have  requests declined by actual_user
     users_declining_requested_user_ids = DeclinedMatch.objects.filter(
-        declined_user=actual_user
-    ).values_list('requesting_user_id', flat=True)
+        receiver=actual_user
+    ).values_list('receiver_id', flat=True)
 
     # Combine the two sets of IDs to exclude from the unmatched users queryset
     excluded_user_ids = set(users_declined_by_requested_user_ids) | set(users_declining_requested_user_ids)
