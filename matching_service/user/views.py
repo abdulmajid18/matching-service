@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponseServerError
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -13,7 +14,7 @@ from .models import Match, MatchRequest, MatchingCriteria, CustomUser
 from .serializers import UserProfileSerializer, AgeRangeSerializer, MatchRequestSerializer, CustomUserSerializer
 
 from .utils.matching_algo import matching_algorithm, update_individual_state, add_to_declined_matches, \
-    create_or_update_matching_criteria
+    create_or_update_matching_criteria, get_other_matched_user
 
 
 class UserProfileView(RetrieveUpdateAPIView):
@@ -39,23 +40,19 @@ class SuggestMatchesView(APIView):
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         requested_user = request.user
-
-        # Check if the user already has a match
         user_in_match_record = Match.objects.filter(Q(user1=requested_user) | Q(user2=requested_user)).exists()
-
-        if user_in_match_record:
-            if not self.user_unmatched(requested_user):
-                return Response({"detail": "You are currently matched"}, status=status.HTTP_200_OK)
-
         serializer = AgeRangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         min_age = serializer.validated_data.get("min_age")
         max_age = serializer.validated_data.get("max_age")
-
         create_or_update_matching_criteria(requested_user, min_age, max_age)
-
         queryset = matching_algorithm(min_age, max_age, requested_user)
         serializer = UserProfileSerializer(queryset, many=True)
+        if user_in_match_record:
+            if not self.user_unmatched(requested_user):
+                return Response({"detail": "You are currently matched",
+                                 "Available matches": serializer.data
+                                 }, status=status.HTTP_200_OK)
 
         if not user_in_match_record:
             initialized_match = Match.objects.create(user1=requested_user)
@@ -137,9 +134,13 @@ class CheckRequestStatus(APIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
-        matching_criteria = MatchingCriteria.objects.get(user=user)
-        pending_matches_queryset = matching_algorithm(matching_criteria.min_age, matching_criteria.max_age, user)
-        possible_matches_serializer = UserProfileSerializer(pending_matches_queryset, many=True)
+        try:
+            matching_criteria = MatchingCriteria.objects.get(user=user)
+            pending_matches_queryset = matching_algorithm(matching_criteria.min_age, matching_criteria.max_age, user)
+            possible_matches_serializer = UserProfileSerializer(pending_matches_queryset, many=True)
+        except MatchingCriteria.DoesNotExist:
+            error_message = "Suggest for matcher to make yourself Known to Others"
+            return Response({'error': error_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             match_request = MatchRequest.objects.get(senders=user)
             match_request_state = match_request.matchrequeststate
@@ -148,8 +149,9 @@ class CheckRequestStatus(APIView):
 
         if match_request_state:
             if match_request_state.state == 'Accepted':
+                matched_with = get_other_matched_user(user)
                 return Response({
-                    'message': f'Your request was accepted by User {match_request_state.matched_user}',
+                    'message': f'Your request was accepted by User {matched_with}',
                     'possible matches still available': possible_matches_serializer.data
                 }, status=status.HTTP_200_OK)
 

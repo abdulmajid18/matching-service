@@ -57,3 +57,9 @@ def matching_algorithm(min_age, max_age, user):
     ).exclude(id=user.id).exclude(id__in=excluded_user_ids)
 
     return unmatched_users
+
+
+def get_other_matched_user(user):
+    match = Match.objects.filter(Q(user1=user) | Q(user2=user), state='Match').first()
+    user2 = match.user2 if match.user1 == user else match.user1
+    return user2
