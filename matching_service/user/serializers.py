@@ -24,9 +24,16 @@ class AgeRangeSerializer(serializers.Serializer):
     max_age = serializers.IntegerField(max_value=100, min_value=18)
 
 
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'gender', 'phone_number', 'age']
+
+
 class MatchRequestSerializer(serializers.ModelSerializer):
+    senders = CustomUserSerializer(many=True)
+
     class Meta:
         model = MatchRequest
-        # fields = '__all__'
-        exclude = ('sender','receiver','state','timestamp')
+        fields = ['senders']
 

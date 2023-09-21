@@ -43,20 +43,39 @@ class DeclinedMatch(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.sender} declined a request from {self.receiver}"
+        return f"{self.receiver} declined a request from {self.sender}"
 
 
 class MatchRequest(models.Model):
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_requests')
+    senders = models.ManyToManyField(CustomUser, related_name='sent_requests')
+
+    def __str__(self):
+        return f"{self.receiver.username}'s match request ({self.senders})"
+
+    @classmethod
+    def create_match_request(cls, sender, receiver_id):
+        match_request = cls.objects.filter(receiver_id=receiver_id).first()
+
+        if not match_request:
+            match_request = cls(receiver_id=receiver_id)
+            match_request.save()
+            match_request_state = MatchRequestState.objects.create(match_request=match_request, state='Pending')
+            match_request_state.save()
+
+        match_request.senders.add(sender)
+        return match_request
+
+
+class MatchRequestState(models.Model):
     REQUEST_STATE_CHOICES = [
         ('Pending', 'Pending'),
         ('Accepted', 'Accepted'),
-        ('Declined', 'Declined'),
     ]
 
-    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_requests')
-    sender = models.ManyToManyField(CustomUser, related_name='sent_requests')
+    match_request = models.OneToOneField(MatchRequest, on_delete=models.CASCADE)
     state = models.CharField(max_length=10, choices=REQUEST_STATE_CHOICES, default='Pending')
-    timestamp = models.DateTimeField(auto_now_add=True)
+    matched_user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.receiver.username}'s match request ({self.state})"
+        return f"State of MatchRequest for {self.match_request.receiver.username}"
