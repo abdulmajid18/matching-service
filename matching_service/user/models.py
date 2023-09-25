@@ -25,16 +25,27 @@ class MatchingCriteria(models.Model):
 
 class Match(models.Model):
     MATCH_STATE_CHOICES = [
-        ('Match', 'Match'),
-        ('Unmatch', 'Unmatch'),
+        ('Matched', 'Matched'),
+        ('Unmatched', 'Unmatched'),
+        ('Pending', 'Pending'),
     ]
 
     user1 = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user1', null=True)
     user2 = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user2', null=True)
-    state = models.CharField(max_length=7, choices=MATCH_STATE_CHOICES, default='Unmatch')
+    state = models.CharField(max_length=15, choices=MATCH_STATE_CHOICES, default='Unmatched')
 
     def __str__(self):
-        return f"{self.user1.username} - {self.user2.username} ({'Matched' if self.state else 'Not Matched'})"
+        return f"{self.user1.username}  ({'Matched' if self.state else 'Not Matched'})"
+
+    def get_user1_state(self, user_id):
+        if self.user1_id == user_id:
+            return self.state
+        return None
+
+    def get_user2_state(self, user_id):
+        if self.user2_id == user_id:
+            return self.state
+        return None
 
 
 class DeclinedMatch(models.Model):
@@ -46,36 +57,5 @@ class DeclinedMatch(models.Model):
         return f"{self.receiver} declined a request from {self.sender}"
 
 
-class MatchRequest(models.Model):
-    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_requests')
-    senders = models.ManyToManyField(CustomUser, related_name='sent_requests')
-
-    def __str__(self):
-        return f"{self.receiver.username}'s match request ({self.senders})"
-
-    @classmethod
-    def create_match_request(cls, sender, receiver_id):
-        match_request = cls.objects.filter(receiver_id=receiver_id).first()
-
-        if not match_request:
-            match_request = cls(receiver_id=receiver_id)
-            match_request.save()
-            match_request_state = MatchRequestState.objects.create(match_request=match_request, state='Pending')
-            match_request_state.save()
-
-        match_request.senders.add(sender)
-        return match_request
 
 
-class MatchRequestState(models.Model):
-    REQUEST_STATE_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Accepted', 'Accepted'),
-    ]
-
-    match_request = models.OneToOneField(MatchRequest, on_delete=models.CASCADE)
-    state = models.CharField(max_length=10, choices=REQUEST_STATE_CHOICES, default='Pending')
-    matched_user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
-
-    def __str__(self):
-        return f"State of MatchRequest for {self.match_request.receiver.username}"

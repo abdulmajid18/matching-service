@@ -34,8 +34,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    "user",
-    "state_handling",
+    "user.apps.UserConfig",
     "django.contrib.sites",
     "allauth",
     "allauth.account",
