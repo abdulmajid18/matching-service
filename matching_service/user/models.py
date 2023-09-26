@@ -35,17 +35,8 @@ class Match(models.Model):
     state = models.CharField(max_length=15, choices=MATCH_STATE_CHOICES, default='Unmatched')
 
     def __str__(self):
-        return f"{self.user1.username}  ({'Matched' if self.state else 'Not Matched'})"
+        return f"{self.user1.username}  ' state is:  {self.state}"
 
-    def get_user1_state(self, user_id):
-        if self.user1_id == user_id:
-            return self.state
-        return None
-
-    def get_user2_state(self, user_id):
-        if self.user2_id == user_id:
-            return self.state
-        return None
 
 
 class DeclinedMatch(models.Model):

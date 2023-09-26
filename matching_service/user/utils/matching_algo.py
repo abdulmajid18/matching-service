@@ -16,11 +16,10 @@ def create_or_update_matching_criteria(requested_user, min_age, max_age):
 
 
 def matching_algorithm(min_age, max_age, user):
-    declined_request = DeclinedMatch.objects.filter(sender_id=user.id).values('receiver_id')
-    users_in_age_range = CustomUser.objects.filter(age__gte=min_age, age__lte=max_age).exclude(id=user.id).exclude(
-        id__in=declined_request
-    )
-    unmatched_users_in_age_range = users_in_age_range.filter(
-        Q(user1__state='Unmatched') | Q(user2__state='Unmatched')
-    )
-    return unmatched_users_in_age_range
+    declined_request = DeclinedMatch.objects.filter(sender_id=user.id).values_list('receiver_id', flat=True)
+    users_in_age_range = CustomUser.objects.filter(
+        Q(user1__state='Unmatched'),
+        age__gte=min_age,
+        age__lte=max_age
+    ).exclude(id=user.id).exclude(id__in=declined_request)
+    return users_in_age_range

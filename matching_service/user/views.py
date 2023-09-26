@@ -44,15 +44,15 @@ class GetAMatch(APIView):
         max_age = serializer.validated_data.get("max_age")
         create_or_update_matching_criteria(user, min_age, max_age)
         queryset = matching_algorithm(min_age, max_age, user)
-        serializer = UserProfileSerializer(queryset, many=True)
+        matches_serializer = UserProfileSerializer(queryset, many=True)
         if self.is_user_in_match_model(user=user):
             user_match = Match.objects.filter(Q(user1=user)).first()
-            return Response({'Status': user_match.state, 'possible_matches': serializer.data},
+            return Response({'Status': user_match.state, 'possible_matches': matches_serializer.data},
                             status=status.HTTP_201_CREATED)
         else:
             initialize_match = Match.objects.create(user1=user)
             initialize_match.save()
-            return Response({'possible_matches': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({'possible_matches': matches_serializer.data}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
@@ -83,8 +83,6 @@ class MatchRequestCreateView(APIView):
         recipient_match.state = "Pending"
         recipient_match.user2 = self.request.user
         recipient_match.save()
-
-
 
     @transaction.atomic()
     def post(self, request, receiver_id, *args, **kwargs):
@@ -138,7 +136,6 @@ class MatchRequestAcceptDeclineView(ModelViewSet):
         recipient_match.user2 = None
         recipient_match.save()
 
-
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def accept(self, request, sender_id):
@@ -154,4 +151,3 @@ class MatchRequestAcceptDeclineView(ModelViewSet):
         sender_request = self.get_sender_request(sender_id)
         self.update_state_to_unmatched(sender_request, self.request.user)
         return Response({"message": "Match request Declined successfully"}, status=status.HTTP_200_OK)
-

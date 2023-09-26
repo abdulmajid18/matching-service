@@ -36,5 +36,3 @@ class MatchRequestsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
         fields = ['user1']
-
-
