@@ -76,6 +76,17 @@ def user_match_status(request):
     return Response({'status': user_status, 'Possible Matches': serializer.data}, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_match_request_status(request):
+    user = request.user
+    user_request: MatchingRequest = MatchingRequest.objects.filter(sender=user).first()
+    if user_request:
+        return Response({"status": user_request.state}, status=status.HTTP_200_OK)
+    else:
+        return Response({'status': "no request sent to any user"}, status=status.HTTP_200_OK)
+
+
 class MatchRequestCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -175,14 +186,20 @@ class MatchRequestAcceptDeclineView(ModelViewSet):
         receiver_matching_suggestions = MatchSuggestion.objects.filter(user1=receiver)
         receiver_matching_suggestions.delete()
 
-    def update_state_to_unmatched(self, sender_request: MatchUsers, recipient):
-        sender_request.state = 'Unmatched'
-        sender_request.receiver = None
+    def update_request_state(self, sender_request: MatchingRequest, receiver):
+        sender_request.state = 'Declined'
         sender_request.save()
-        recipient_match = MatchUsers.objects.filter(user1=recipient).first()
-        recipient_match.state = "Unmatched"
-        recipient_match.receiver = None
-        recipient_match.save()
+
+    def update_match_suggestions(self, sender, receiver):
+        sender_matching_suggestions: MatchSuggestion = MatchSuggestion.objects.get(user1=sender)
+        sender_matching_suggestions.user2 = None
+        sender_matching_suggestions.state = 'Unmatched'
+        sender_matching_suggestions.save()
+        receiver_matching_suggestions: MatchSuggestion = MatchSuggestion.objects.get(user1=receiver)
+        receiver_matching_suggestions.user2 = None
+        receiver_matching_suggestions.state = 'Unmatched'
+        receiver_matching_suggestions.save()
+
 
     @action(detail=True, methods=['post'])
     @transaction.atomic
@@ -199,6 +216,7 @@ class MatchRequestAcceptDeclineView(ModelViewSet):
     def decline(self, request, sender_id):
         sender = CustomUser.objects.get(id=sender_id)
         add_to_declined_matches(sender=sender, receiver=request.user)
-        sender_request = self.get_sender_request(sender_id)
-        self.update_state_to_unmatched(sender_request, self.request.user)
+        sender_match_request = self.get_sender_request(sender_id)
+        self.update_request_state(sender_match_request, self.request.user)
+        self.update_match_suggestions(sender, request.user)
         return Response({"message": "Match request Declined successfully"}, status=status.HTTP_200_OK)

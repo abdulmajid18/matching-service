@@ -3,7 +3,7 @@ from dj_rest_auth.registration.views import RegisterView
 from dj_rest_auth.views import LoginView, LogoutView
 
 from .views import UserProfileView, GetAMatch, MatchRequestListView, MatchRequestCreateView, \
-    MatchRequestAcceptDeclineView, user_match_status
+    MatchRequestAcceptDeclineView, user_match_status, user_match_request_status
 
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='register'),
@@ -12,6 +12,7 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('get-a-match/', GetAMatch.as_view(), name="get-a-match"),
     path('get-status/', user_match_status, name='user-status'),
+    path('get-request-status/', user_match_request_status, name='user-request-status'),
     path('incoming-requests/', MatchRequestListView.as_view(), name='match-request-list'),
     path('send-request/<int:receiver_id>/', MatchRequestCreateView.as_view(), name='match-request-create'),
     path('api/match-requests/accept/<int:sender_id>/', MatchRequestAcceptDeclineView.as_view({'post': 'accept'}),
