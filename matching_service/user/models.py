@@ -23,20 +23,36 @@ class MatchingCriteria(models.Model):
         return f"Matching Criteria for {self.user.username}"
 
 
-class Match(models.Model):
+class MatchUsers(models.Model):
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sender')
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='receiver')
+
+    def __str__(self):
+        return f"{self.sender.username}  ' state is: Matched"
+
+
+class MatchSuggestion(models.Model):
     MATCH_STATE_CHOICES = [
-        ('Matched', 'Matched'),
         ('Unmatched', 'Unmatched'),
         ('Pending', 'Pending'),
     ]
-
     user1 = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user1', null=True)
     user2 = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user2', null=True)
     state = models.CharField(max_length=15, choices=MATCH_STATE_CHOICES, default='Unmatched')
 
-    def __str__(self):
-        return f"{self.user1.username}  ' state is:  {self.state}"
 
+class MatchingRequest(models.Model):
+    REQUEST_STATE = [
+        ('Accepted', 'Accepted'),
+        ('Pending', 'Pending'),
+        ('Declined', 'Declined'),
+    ]
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='request_sender', null=True)
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='request_receiver', null=True)
+    state = models.CharField(max_length=15, choices=REQUEST_STATE, default='Pending')
+
+    def __str__(self):
+        return f"Matching Request from {self.sender.username} to {self.receiver.username} (State: {self.state})"
 
 
 class DeclinedMatch(models.Model):
@@ -46,7 +62,3 @@ class DeclinedMatch(models.Model):
 
     def __str__(self):
         return f"{self.receiver} declined a request from {self.sender}"
-
-
-
-

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import CustomUser, Match
+from .models import CustomUser, MatchUsers
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -30,9 +30,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'gender', 'phone_number', 'age']
 
 
-class MatchRequestsSerializer(serializers.ModelSerializer):
-    user1 = CustomUserSerializer(many=True)
 
-    class Meta:
-        model = Match
-        fields = ['user1']
+
+
+
+
